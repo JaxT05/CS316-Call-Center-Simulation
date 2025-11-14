@@ -72,7 +72,7 @@ public class CallCenter {
 
      /*
         Your implementation must call the method below to serve each customer.
-        Do not modify this method.
+        You can modify this method. -> add another print statement to print the customer
          */
         public void greet(int customerID) {
             System.out.println("Greeting customer " + customerID);
