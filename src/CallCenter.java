@@ -43,14 +43,22 @@ public class CallCenter {
         }
 
         public void run() {
-            serveQueueLock.lock();
             try {
                 while(serveQueue.isEmpty()) {
                     customerService.await();
                 }
+
+                System.out.println("-----------------------");
+                for(int num : serveQueue) {
+                    System.out.print(num + ", ");
+                }
+                System.out.println("-----------------------");
+
+
+                serveQueueLock.lock();
+
                 serveQueue.remove();
                 serve(customerID);
-                //signal ? ? ??
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
@@ -74,23 +82,44 @@ public class CallCenter {
 
     /* The greeter class. */
     public static class Greeter implements Runnable {
+        private LinkedList<Integer> waitQueue;
+        private ReentrantLock waitQueueLock;
+        private LinkedList<Integer> serveQueue;
+        private ReentrantLock serveQueueLock;
+        private Condition customerWaiting;
+        private Condition customerService;
+
+        public Greeter(LinkedList<Integer> waitQueue, ReentrantLock waitQueueLock, LinkedList<Integer> serveQueue, ReentrantLock serveQueueLock, Condition customerWaiting, Condition customerService) {
+            this.waitQueue = waitQueue;
+            this.waitQueueLock = waitQueueLock;
+            this.serveQueue = serveQueue;
+            this.serveQueueLock = serveQueueLock;
+            this.customerWaiting = customerWaiting;
+            this.customerService = customerService;
+        }
+
         //TODO: complete the Greeter class
 
 
         public void run() {
-            serveQueueLock.lock();
             try {
-                while(serveQueue.isEmpty()) {
-                    customerService.await();
+                while(waitQueue.isEmpty()) {
+                    customerWaiting.await();
                 }
-                waitQueue.remove();
-                greet(customerID);
-                serveQueue.add(customerID);
-                System.out.println("Customer place in serve queue: " + serveQueue.size());
-                //signal ? ? ??
+
+                waitQueueLock.lock();
+
+                int customerToGreet = waitQueue.remove();
+                greet(customerToGreet);
+
+                serveQueueLock.lock();
+                serveQueue.add(customerToGreet);
+//                System.out.println("Customer place in serve queue: " + serveQueue.size());
+                customerService.signal();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
+                waitQueueLock.unlock();
                 serveQueueLock.unlock();
             }
 
@@ -114,15 +143,32 @@ public class CallCenter {
         //TODO: complete the Customer class
         //The ID of the customer.
         private final int ID;
+        private LinkedList<Integer> waitQueue;
+        private ReentrantLock waitQueueLock;
+        private Condition customerWaiting;
 
         //Feel free to modify the constructor
-        public Customer (int i){
+        public Customer (int i, LinkedList<Integer> waitQueue, ReentrantLock waitQueueLock, Condition customerWaiting) {
             ID = i;
+            this.waitQueue = waitQueue;
+            this.waitQueueLock = waitQueueLock;
+            this.customerWaiting = customerWaiting;
         }
 
 
         public void run() {
+            waitQueueLock.lock();
 
+            try {
+                waitQueue.add(ID);
+
+                System.out.println("Customer place in wait queue: " + ID);
+                customerWaiting.signal();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                waitQueueLock.unlock();
+            }
         }
     }
 
@@ -144,11 +190,13 @@ public class CallCenter {
         ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
 
         for (int i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
-            executorService.submit(new Customer(i));
-            executorService.submit(new Greeter());
-            executorService.submit(new Agent());
+            executorService.submit(new Customer(i, waitQueue, waitQueueLock, customerWaiting));
+            executorService.submit(new Greeter(waitQueue, waitQueueLock, serveQueue, serveQueueLock, customerWaiting, customerService));
+//            executorService.submit(new Agent(i, i, serveQueue, serveQueueLock, customerService));
         }
         executorService.shutdown();
+
+
     }
 
 }
