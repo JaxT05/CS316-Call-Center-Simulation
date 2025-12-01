@@ -43,19 +43,18 @@ public class CallCenter {
         }
 
         public void run() {
+            serveQueueLock.lock();
+
             try {
                 while(serveQueue.isEmpty()) {
                     customerService.await();
                 }
 
-                System.out.println("-----------------------");
-                for(int num : serveQueue) {
-                    System.out.print(num + ", ");
-                }
-                System.out.println("-----------------------");
-
-
-                serveQueueLock.lock();
+//                System.out.println("-----------------------");
+//                for(int num : serveQueue) {
+//                    System.out.print(num + ", ");
+//                }
+//                System.out.println("-----------------------");
 
                 serveQueue.remove();
                 serve(customerID);
@@ -80,6 +79,10 @@ public class CallCenter {
         }
     }
 
+    class SharedTest {
+        static int count = 0;
+    }
+
     /* The greeter class. */
     public static class Greeter implements Runnable {
         private LinkedList<Integer> waitQueue;
@@ -88,6 +91,8 @@ public class CallCenter {
         private ReentrantLock serveQueueLock;
         private Condition customerWaiting;
         private Condition customerService;
+
+        static int test = 0;
 
         public Greeter(LinkedList<Integer> waitQueue, ReentrantLock waitQueueLock, LinkedList<Integer> serveQueue, ReentrantLock serveQueueLock, Condition customerWaiting, Condition customerService) {
             this.waitQueue = waitQueue;
@@ -102,12 +107,12 @@ public class CallCenter {
 
 
         public void run() {
+            waitQueueLock.lock();
+
             try {
                 while(waitQueue.isEmpty()) {
                     customerWaiting.await();
                 }
-
-                waitQueueLock.lock();
 
                 int customerToGreet = waitQueue.remove();
                 greet(customerToGreet);
@@ -174,7 +179,7 @@ public class CallCenter {
 
     /* Create the greeter and agents tasks first, and then create the customer tasks.
         to simulate a random interval between customer calls, sleep for a random period after creating each customer task. */
-    public static void main(String[] args){
+    public static void main(String[] args) throws InterruptedException {
     //TODO: complete the main method
 
         LinkedList<Integer> waitQueue = new LinkedList<>();
@@ -186,17 +191,15 @@ public class CallCenter {
         Condition customerWaiting = waitQueueLock.newCondition();
         Condition customerService = serveQueueLock.newCondition();
 
-
         ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
 
         for (int i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
             executorService.submit(new Customer(i, waitQueue, waitQueueLock, customerWaiting));
             executorService.submit(new Greeter(waitQueue, waitQueueLock, serveQueue, serveQueueLock, customerWaiting, customerService));
-//            executorService.submit(new Agent(i, i, serveQueue, serveQueueLock, customerService));
+            executorService.submit(new Agent(i, i, serveQueue, serveQueueLock, customerService));
         }
+
         executorService.shutdown();
-
-
     }
 
 }
