@@ -72,10 +72,8 @@ public class TestCallCenter {
         //The ID of the agent
         private final int ID;
 
-        private final LinkedList<Integer> waitQueue;
         private final LinkedList<Integer> serveQueue;
 
-        private final ReentrantLock waitQueueLock;
         private final ReentrantLock serveQueueLock;
 
         private final Condition customerService;
@@ -83,11 +81,9 @@ public class TestCallCenter {
         private int num_served = 0;
 
         //Feel free to modify the constructor
-        public Agent(int i, LinkedList<Integer> waitQueue, LinkedList<Integer> serveQueue, ReentrantLock waitQueueLock, ReentrantLock serveQueueLock, Condition customerService) {
+        public Agent(int i, LinkedList<Integer> serveQueue, ReentrantLock serveQueueLock, Condition customerService) {
             ID = i;
-            this.waitQueue = waitQueue;
             this.serveQueue = serveQueue;
-            this.waitQueueLock = waitQueueLock;
             this.serveQueueLock = serveQueueLock;
             this.customerService = customerService;
         }
