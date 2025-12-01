@@ -51,11 +51,13 @@ public class TestCallCenter {
         Condition customerService = serveQueueLock.newCondition();
 
         try (ExecutorService es = Executors.newFixedThreadPool(NUMBER_OF_THREADS)) {
+            for (int i = 0; i < NUMBER_OF_AGENTS; i++) {
+                es.submit(new Agent(i, serveQueue, serveQueueLock, customerService));
+            }
+
             es.submit(new Greeter(waitQueue, serveQueue, waitQueueLock, serveQueueLock, customerWaiting, customerService));
 
-            for (int i = 0; i < NUMBER_OF_AGENTS; i++) {
-                es.submit(new Agent(i, waitQueue, serveQueue, waitQueueLock, serveQueueLock, customerService));
-            }
+
 
             for (int i = 0; i < NUMBER_OF_CUSTOMERS; i++) {
                 es.submit(new Customer(i, waitQueue, waitQueueLock, customerWaiting));
@@ -98,7 +100,7 @@ public class TestCallCenter {
                 serveQueueLock.lock();
 
                 try {
-                    while (serveQueue.isEmpty()) {
+                    if (serveQueue.isEmpty()) {
                         customerService.await();
                     }
 
@@ -106,6 +108,8 @@ public class TestCallCenter {
 
                     int customerID = serveQueue.remove();
                     serve(customerID);
+
+                    customerService.signal();
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 } finally {
@@ -158,7 +162,7 @@ public class TestCallCenter {
                 serveQueueLock.lock();
 
                 try {
-                    while (waitQueue.isEmpty()) {
+                    if (waitQueue.isEmpty()) {
                         customerWaiting.await();
                     }
 
